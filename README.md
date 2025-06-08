@@ -22,6 +22,7 @@ This project provides a hands-on tutorial for understanding and implementing obs
 *   **Docker Compose**: Entire environment orchestrated with Docker Compose for easy setup.
 *   **Streamlit Tutorial App**: A web-based guide to navigate the tutorial (content currently minimal).
 *   **`start.sh` script**: For easy environment startup.
+*   **Pre-configured Grafana Dashboard**: An overview dashboard (`Kafka O11y Tutorial Overview`) is automatically provisioned in Grafana.
 
 ## Project Structure
 
@@ -95,7 +96,12 @@ Once the environment is running:
     *   Access Grafana: `http://localhost:3000`
     *   Default credentials: `admin` / `admin` (you may be prompted to change the password on first login).
 
-    **a. Metrics (Prometheus Data Source)**:
+    **0. Check the Pre-configured 'Kafka O11y Tutorial Overview' Dashboard**:
+    *   In Grafana's left sidebar, navigate to "Dashboards".
+    *   Look for and open the dashboard titled "Kafka O11y Tutorial Overview".
+    *   This dashboard provides a quick glance at message rates for producers/consumers and other relevant metrics from the system.
+
+    **b. Metrics (Prometheus Data Source)**:
     *   In Grafana, go to "Explore" or create/edit a Dashboard panel.
     *   Select the "Prometheus" data source.
     *   Example PromQL queries:
@@ -105,7 +111,7 @@ Once the environment is running:
         *   `jvm_memory_used_bytes{area="heap", service_name="java-kafka-producer"}` (JVM metrics from Java apps via OTel agent)
         *   Explore other metrics related to Kafka clients (e.g., `kafka_producer_`, `kafka_consumer_`) which might be available depending on the instrumentation level.
 
-    **b. Logs (Loki Data Source)**:
+    **c. Logs (Loki Data Source)**:
     *   In Grafana, go to "Explore".
     *   Select the "Loki" data source.
     *   Example LogQL queries:
@@ -114,7 +120,7 @@ Once the environment is running:
         *   Filter by trace ID: `{service_name="python-kafka-consumer"} | json | line_format "{{.message}}" | trace_id="<some_trace_id>"` (assuming logs are JSON formatted and contain trace_id)
     *   You should find logs enriched with `service_name`, `trace_id`, `span_id`, etc.
 
-    **c. Traces (Tempo Data Source)**:
+    **d. Traces (Tempo Data Source)**:
     *   In Grafana, go to "Explore".
     *   Select the "Tempo" data source.
     *   You can search for traces using a Trace ID (if you have one from a log).
@@ -133,10 +139,10 @@ Once the environment is running:
 
 ## Further Development & Refinements
 
-*   **Populate Streamlit App**: The Streamlit application (`streamlit-app/app.py`) needs to be populated with detailed tutorial content.
+*   **Populate Streamlit App Content Files**: The Streamlit application (`streamlit-app/app.py`) is structured to load content from markdown files in the `streamlit-app/content/` directory. These files currently contain placeholders and need to be populated with detailed tutorial text.
 *   **Go Application Tracer/Meter Naming**: The tracer/meter names in the Go applications (`go-producer/main.go`, `go-consumer/main.go`) use a placeholder module path (`github.com/example/...`). This should be updated to the actual module path for better consistency if the project is forked or formally structured.
 *   **Advanced Kafka Observability**: Explore adding JMX Exporter for deeper Kafka broker metrics if not already covered by OpenTelemetry's Kafka metrics.
-*   **Custom Grafana Dashboards**: Create pre-built dashboards in Grafana for a better out-of-the-box experience.
+*   **More Custom Grafana Dashboards**: While an overview dashboard is now provided, additional, more detailed dashboards could be created for specific components or use cases.
 
 ## Contributing
 
