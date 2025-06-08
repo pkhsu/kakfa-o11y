@@ -1,0 +1,130 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Python Producer: Messages Sent Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 1,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(python_producer_messages_sent_total[1m])",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Python Consumer: Messages Received Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 2,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(python_consumer_messages_received_total[1m])",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Go Producer: Messages Sent Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 3,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(go_producer_messages_sent_total[1m])",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Go Consumer: Messages Received Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 4,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(go_consumer_messages_received_total[1m])",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Java Producer/Consumer (Kafka Client Metrics - Example: Producer Record Send Rate)",
+      "description": "Requires OTel agent to collect Kafka client JMX metrics or specific Kafka client metrics. Query may need adjustment based on actual metrics exposed by OTel Java agent for Kafka.",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(kafka_producer_producer_metrics_record_send_total{service_name=\"java-kafka-producer\"}[1m])",
+          "legendFormat": "{{service_name}} - record-send-total",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "OTel Collector: Accepted Spans Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "id": 6,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(otelcol_receiver_accepted_spans[1m])",
+          "legendFormat": "{{job}} - {{instance}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["kafka", "opentelemetry", "tutorial"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Kafka O11y Tutorial Overview",
+  "uid": "kafka-o11y-tutorial-overview",
+  "version": 1,
+  "weekStart": ""
+}
