@@ -179,6 +179,20 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
 
+  streamlit-app:
+    build:
+      context: ./streamlit-app
+    ports:
+      - "8501:8501"
+    restart: on-failure
+    depends_on:
+      - grafana # For links to Grafana
+      - otel-collector # General dependency for the o11y stack
+    environment:
+      # This URL is for the Streamlit app to construct links for the user's browser.
+      # It assumes Grafana is accessible on localhost:3000 from the user's machine.
+      GRAFANA_URL: "http://localhost:3000"
+
 volumes:
   grafana_data: {}
   prometheus_data: {}
