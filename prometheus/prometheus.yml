@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  # Add a job for node_exporter if we decide to include it later
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100'] # Assuming node_exporter is on this port
+  - job_name: 'otel-collector'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['otel-collector:8889']

@@ -1,0 +1,24 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:                           # list of enabled receivers
+    otlp:
+      protocols:
+        grpc:
+        http:
+
+ingester:
+  trace_idle_period: 10s               # time to hold a trace in memory
+  max_block_bytes: 1_000_000           # cut blocks when they hit 1MB or ...
+  max_block_duration: 5m               #   after 5m
+
+compactor:
+  compaction:
+    block_retention: 1h                # overall Tempo trace retention. set to low value for demo purposes
+
+storage:
+  trace:
+    backend: local                     # backend configuration to use
+    local:
+      path: /tmp/tempo/blocks

@@ -1,0 +1,28 @@
+# Stage 1: Build the Go application
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache gcc musl-dev librdkafka-dev
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=1 go build -o /go-consumer main.go
+
+
+# Stage 2: Create the runtime image
+FROM alpine:latest
+
+WORKDIR /app
+
+RUN apk add --no-cache librdkafka
+
+COPY --from=builder /go-consumer /go-consumer
+
+ENV OTEL_SERVICE_NAME="go-kafka-consumer"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="otel-collector:4317"
+ENV KAFKA_BOOTSTRAP_SERVERS="kafka:9092"
+
+ENTRYPOINT ["/go-consumer"]
