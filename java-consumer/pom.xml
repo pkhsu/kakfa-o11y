@@ -14,6 +14,8 @@
            <logback.version>1.4.14</logback.version>
            <opentelemetry.version>1.32.0</opentelemetry.version>
            <opentelemetry.instrumentation.version>1.32.0-alpha</opentelemetry.instrumentation.version>
+        <junit.jupiter.version>5.10.0</junit.jupiter.version>
+        <mockito.version>5.5.0</mockito.version>
        </properties>
 
        <dependencies>
@@ -59,6 +61,34 @@
                 <version>${opentelemetry.instrumentation.version}</version>
                 <scope>runtime</scope>
             </dependency>
+
+           <!-- JUnit 5 / Jupiter -->
+           <dependency>
+               <groupId>org.junit.jupiter</groupId>
+               <artifactId>junit-jupiter-api</artifactId>
+               <version>${junit.jupiter.version}</version>
+               <scope>test</scope>
+           </dependency>
+           <dependency>
+               <groupId>org.junit.jupiter</groupId>
+               <artifactId>junit-jupiter-engine</artifactId>
+               <version>${junit.jupiter.version}</version>
+               <scope>test</scope>
+           </dependency>
+
+           <!-- Mockito -->
+           <dependency>
+               <groupId>org.mockito</groupId>
+               <artifactId>mockito-core</artifactId>
+               <version>${mockito.version}</version>
+               <scope>test</scope>
+           </dependency>
+           <dependency>
+               <groupId>org.mockito</groupId>
+               <artifactId>mockito-junit-jupiter</artifactId>
+               <version>${mockito.version}</version>
+               <scope>test</scope>
+           </dependency>
        </dependencies>
 
        <build>
@@ -97,6 +127,11 @@
                         </archive>
                     </configuration>
                 </plugin>
+               <plugin>
+                   <groupId>org.apache.maven.plugins</groupId>
+                   <artifactId>maven-surefire-plugin</artifactId>
+                   <version>3.2.5</version>
+               </plugin>
            </plugins>
        </build>
    </project>

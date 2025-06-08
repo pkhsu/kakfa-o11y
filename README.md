@@ -137,6 +137,82 @@ Once the environment is running:
     ```
 *   This will stop and remove the containers. Data stored in Docker volumes (Grafana dashboards, Prometheus metrics, etc.) will persist unless the volumes are manually removed.
 
+## Running Unit Tests
+
+Unit tests have been added for each of the language-specific applications (Java, Python, Go). Due to the nature of these applications (many having their core logic within `main` methods or relying on external services like Kafka), many of the tests are placeholder structures or test utility functions. Comprehensive unit testing would require significant refactoring of the applications.
+
+Here's how you can run the existing tests:
+
+### Java
+
+The Java producer and consumer use Maven and JUnit 5.
+1.  Navigate to the specific application directory:
+    ```bash
+    cd java-producer
+    # or
+    cd java-consumer
+    ```
+2.  Run the tests using Maven:
+    ```bash
+    mvn test
+    ```
+    This will compile the test classes and run them. Placeholder tests should pass, indicating the testing framework is set up.
+
+### Python
+
+The Python producer and consumer use `pytest`.
+1.  Ensure you have a Python environment with `pytest`, `pytest-mock`, and the application's dependencies (from `requirements.txt`) installed. The simplest way to achieve this is often within the Docker container after it's built, or by creating a local virtual environment.
+2.  Navigate to the specific application directory:
+    ```bash
+    cd python-producer
+    # or
+    cd python-consumer
+    ```
+3.  Run pytest:
+    ```bash
+    pytest
+    ```
+    The tests primarily cover OTel setup and Kafka client instantiation (mocked).
+
+    *Note*: Direct execution of `pip install` in some automated environments can be problematic due to file system limitations. Running tests within the Docker container (after building it with a stage that includes test dependencies) or a local virtual environment is recommended.
+
+### Go
+
+The Go producer and consumer use the standard `testing` package.
+1.  Navigate to the specific application directory:
+    ```bash
+    cd go-producer
+    # or
+    cd go-consumer
+    ```
+2.  Ensure Go modules are tidy and downloaded (if not already by the build process):
+    ```bash
+    go mod tidy
+    ```
+3.  Run the tests:
+    ```bash
+    go test ./...
+    ```
+    The tests cover utility functions (like `getEnv`) and a basic, tolerant check of the OTel initialization logic. Full testing of Kafka interaction is complex due to CGO dependencies and would typically involve more involved integration tests or significant refactoring for mockability.
+
+    *Note*: Some automated environments might experience issues resolving specific complex Go module dependencies (`otelkafka/v2` in this case). If `go test` fails due to module resolution, ensure your local Go environment or the Docker build process can correctly fetch all dependencies as defined in `go.mod` and `go.sum`.
+
+### Streamlit Application
+
+The Streamlit tutorial application also uses `pytest`.
+1.  Ensure you have a Python environment with `pytest`, `pytest-mock`, and `streamlit` (from `streamlit-app/requirements.txt`) installed. This is typically best done within its Docker container or a local virtual environment.
+2.  Navigate to the Streamlit application directory:
+    ```bash
+    cd streamlit-app
+    ```
+3.  Run pytest:
+    ```bash
+    pytest
+    ```
+    The tests primarily cover helper functions and the placeholder behavior of content loading logic. Full UI interaction testing is beyond the scope of these unit tests.
+
+    *Note*: Similar to other Python applications, direct `pip install` of Streamlit and its numerous dependencies in some automated environments can hit file system limits. Running tests within the Docker container or a local virtual environment is the most reliable approach.
+
 ## Further Development & Refinements
 
 *   **Populate Streamlit App Content Files**: The Streamlit application (`streamlit-app/app.py`) is structured to load content from markdown files in the `streamlit-app/content/` directory. These files currently contain placeholders and need to be populated with detailed tutorial text.
