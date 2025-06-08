@@ -1,0 +1,40 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889" # Prometheus will scrape this
+    # namespace: "kafka_tutorial" # Optional: to namespace metrics
+
+  loki:
+    endpoint: "http://loki:3100/loki/api/v1/push"
+    # Optional: add labels
+    # labels:
+    #   resource:
+    #     service_name: "service.name" # Use actual service name from resource attributes
+
+  otlp/tempo:
+    endpoint: "tempo:4317" # Tempo's OTLP gRPC port
+    tls:
+      insecure: true
+
+processors:
+  batch:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [loki]
