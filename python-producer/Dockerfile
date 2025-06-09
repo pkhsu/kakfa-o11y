@@ -12,12 +12,14 @@ COPY producer.py .
 
 # Environment variables for OpenTelemetry (can also be set in docker-compose.yml)
 ENV OTEL_SERVICE_NAME="python-kafka-producer"
-ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317" # OTLP gRPC endpoint for Python
+# OTLP gRPC endpoint for Python
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317"
 # Note: Python OTLP exporter by default uses gRPC. If HTTP is needed, use OTLPSpanExporterHttp, etc.
 # ENV OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf" # If OTLP HTTP is preferred
 ENV KAFKA_BOOTSTRAP_SERVERS="kafka:9092"
 
 # Ensure logs are sent with trace context by LoggingInstrumentor
-ENV PYTHONUNBUFFERED=1 # Ensures logs are sent out immediately
+# Ensures logs are sent out immediately
+ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "producer.py"]

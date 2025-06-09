@@ -15,8 +15,8 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME as ResourceAttributesServiceName
 
-from opentelemetry.instrumentation.kafka import KafkaInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
+# from opentelemetry.instrumentation.kafka import KafkaInstrumentor
+# from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator # For manual context extraction if needed
 
 # --- Configuration ---
@@ -47,8 +47,8 @@ def setup_opentelemetry():
     meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
     metrics.set_meter_provider(meter_provider)
 
-    KafkaInstrumentor().instrument()
-    LoggingInstrumentor().instrument(set_logging_format=True)
+    # KafkaInstrumentor().instrument()
+    # LoggingInstrumentor().instrument(set_logging_format=True)
 
     logger.info(f"OpenTelemetry configured for {OTEL_SERVICE_NAME} sending to {OTEL_EXPORTER_OTLP_ENDPOINT}")
 

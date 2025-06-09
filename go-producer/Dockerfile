@@ -1,10 +1,10 @@
 # Stage 1: Build the Go application
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-bullseye AS builder
 
 WORKDIR /app
 
 # Install build dependencies for confluent-kafka-go (librdkafka)
-RUN apk add --no-cache gcc musl-dev librdkafka-dev
+RUN apt-get update && apt-get install -y librdkafka-dev && rm -rf /var/lib/apt/lists/*
 
 COPY go.mod go.sum ./
 # Download dependencies first to leverage Docker cache
@@ -15,12 +15,12 @@ RUN CGO_ENABLED=1 go build -o /go-producer main.go
 
 
 # Stage 2: Create the runtime image
-FROM alpine:latest
+FROM debian:bullseye-slim
 
 WORKDIR /app
 
 # Install runtime dependencies for confluent-kafka-go (librdkafka)
-RUN apk add --no-cache librdkafka
+RUN apt-get update && apt-get install -y librdkafka1 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /go-producer /go-producer
 

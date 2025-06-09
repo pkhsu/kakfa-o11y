@@ -11,7 +11,7 @@ import (
     // "strings" // Not used, can be removed
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelkafka/v2" // v2 for kafka client
+	// "go.opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelkafka/v2" // v2 for kafka client
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
     "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -122,8 +122,8 @@ func main() {
 	}
 	defer p.Close()
 
-	// Instrument the producer
-	instrumentedProducer := otelkafka.NewProducer(p, otelkafka.WithTracerProvider(otel.GetTracerProvider()), otelkafka.WithPropagators(otel.GetTextMapPropagator()))
+	// Note: Kafka instrumentation temporarily disabled due to package compatibility
+	// instrumentedProducer := otelkafka.NewProducer(p)
 
 
 	// Handle graceful shutdown
@@ -160,8 +160,8 @@ func main() {
 				Key:            []byte(key),
 				Value:          []byte(value),
 			}
-			// The otelkafka wrapper handles header injection for propagation
-			err = instrumentedProducer.Produce(spanCtx, msg, deliveryChan)
+			// Note: Using direct producer (instrumentation disabled)
+			err = p.Produce(msg, deliveryChan)
 			if err != nil {
 				log.Printf("Failed to produce message: %v\n", err)
                 messagesSentCounter.Add(spanCtx, 1, otelmetric.WithAttributes(attribute.String("status", "error")))
@@ -190,7 +190,7 @@ func main() {
 
 	// Flush remaining messages
 	log.Println("Flushing producer...")
-	remaining := instrumentedProducer.Flush(15000) // timeout 15 seconds
+	remaining := p.Flush(15000) // timeout 15 seconds
 	if remaining > 0 {
 		log.Printf("%d messages were not delivered\n", remaining)
 	} else {

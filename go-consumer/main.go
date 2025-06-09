@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelkafka/v2"
+	// "go.opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelkafka/v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
     "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -131,13 +131,10 @@ func main() {
 	}
 	defer c.Close() // Ensure consumer is closed on exit
 
-	// Instrument the consumer
-	instrumentedConsumer := otelkafka.NewConsumer(c,
-        otelkafka.WithTracerProvider(otel.GetTracerProvider()),
-        otelkafka.WithPropagators(otel.GetTextMapPropagator()),
-    )
+	// Note: Kafka instrumentation temporarily disabled due to package compatibility
+	// instrumentedConsumer := otelkafka.NewConsumer(c)
 
-	err = instrumentedConsumer.Subscribe(topic, nil)
+	err = c.Subscribe(topic, nil)
 	if err != nil {
 		log.Fatalf("Failed to subscribe to topic %s: %v", topic, err)
 	}
@@ -154,9 +151,8 @@ func main() {
 			log.Printf("Caught signal %v: terminating\n", sig)
 			run = false
 		default:
-            // The otelkafka consumer wrapper handles context propagation from headers.
-            // It starts a span when a message is received.
-			msg, err := instrumentedConsumer.ReadMessage(ctx, 100*time.Millisecond) // Poll with timeout
+            // Note: Using direct Kafka consumer (instrumentation disabled)
+			msg, err := c.ReadMessage(100*time.Millisecond) // Poll with timeout
 
 			if err != nil {
 				// Errors other than timeout
@@ -167,7 +163,7 @@ func main() {
 				continue // Continue polling on timeout or other non-fatal errors
 			}
 
-            processCtx, processSpan := tracer.Start(otelkafka.ContextFromMessage(ctx, msg), "process_go_kafka_message")
+            processCtx, processSpan := tracer.Start(ctx, "process_go_kafka_message")
             startTime := time.Now()
 
 			log.Printf("Received message on %s [%d] at offset %v: key=%s, value=%s\n",

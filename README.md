@@ -72,6 +72,124 @@ This project provides a hands-on tutorial for understanding and implementing obs
 
     The first time you run this, it might take a few minutes to download base Docker images and build the application images.
 
+## Observability Data Flow Architecture
+
+This section explains how telemetry data (logs, metrics, traces) flows from different language applications through the observability pipeline.
+
+### System Architecture Overview
+
+```mermaid
+graph TD
+    %% Applications
+    subgraph "Applications"
+        PY_PROD[Python Producer<br/>Service: python-kafka-producer]
+        PY_CONS[Python Consumer<br/>Service: python-kafka-consumer]
+        JAVA_PROD[Java Producer<br/>Service: java-kafka-producer]
+        JAVA_CONS[Java Consumer<br/>Service: java-kafka-consumer]
+        GO_PROD[Go Producer<br/>Service: go-kafka-producer]
+        GO_CONS[Go Consumer<br/>Service: go-kafka-consumer]
+    end
+
+    %% OpenTelemetry Collector
+    OTEL_COL[OpenTelemetry Collector<br/>Endpoint: 0.0.0.0:4317/4318]
+
+    %% Storage backends
+    subgraph "Storage Backends"
+        PROMETHEUS[Prometheus<br/>Port: 9090<br/>Scrapes: otel-collector:8889]
+        LOKI[Loki<br/>Port: 3100<br/>API: /loki/api/v1/push]
+        TEMPO[Tempo<br/>Port: 14317/14318<br/>Storage: /var/tempo/traces]
+    end
+
+    %% Visualization
+    GRAFANA[Grafana<br/>Port: 3000<br/>Data Sources]
+
+    %% Data flow connections
+    PY_PROD -->|"OTLP gRPC<br/>Traces, Metrics, Logs"| OTEL_COL
+    PY_CONS -->|"OTLP gRPC<br/>Traces, Metrics, Logs"| OTEL_COL
+    
+    JAVA_PROD -->|"OTLP gRPC<br/>Auto-instrumented<br/>via JavaAgent"| OTEL_COL
+    JAVA_CONS -->|"OTLP gRPC<br/>Auto-instrumented<br/>via JavaAgent"| OTEL_COL
+    
+    GO_PROD -->|"OTLP gRPC<br/>Manual SDK<br/>Traces, Metrics"| OTEL_COL
+    GO_CONS -->|"OTLP gRPC<br/>Manual SDK<br/>Traces, Metrics"| OTEL_COL
+
+    %% Collector processing pipelines
+    OTEL_COL -->|"Traces Pipeline<br/>batch processor"| TEMPO
+    OTEL_COL -->|"Metrics Pipeline<br/>batch processor<br/>Prometheus export format"| PROMETHEUS
+    OTEL_COL -->|"Logs Pipeline<br/>batch processor"| LOKI
+
+    %% Grafana connections
+    PROMETHEUS -->|"PromQL Queries"| GRAFANA
+    LOKI -->|"LogQL Queries"| GRAFANA
+    TEMPO -->|"TraceQL Queries"| GRAFANA
+
+    style PY_PROD fill:#3776ab
+    style PY_CONS fill:#3776ab
+    style JAVA_PROD fill:#f89820
+    style JAVA_CONS fill:#f89820
+    style GO_PROD fill:#00add8
+    style GO_CONS fill:#00add8
+    style OTEL_COL fill:#326ce5
+    style PROMETHEUS fill:#e6522c
+    style LOKI fill:#f46800
+    style TEMPO fill:#ed1c24
+    style GRAFANA fill:#f46800
+```
+
+### Language-Specific Telemetry Implementation
+
+#### 1. Python Applications (Manual SDK)
+- **Configuration**: OpenTelemetry Python SDK with manual setup
+- **Connection**: OTLP gRPC exporter to `otel-collector:4317`
+- **Traces**: Manual span creation with Kafka message metadata
+- **Metrics**: Custom counters and histograms (e.g., `python.producer.messages_sent`)
+- **Logs**: Standard Python logging forwarded through OTEL Collector
+
+#### 2. Java Applications (Auto-instrumentation)
+- **Configuration**: OpenTelemetry Java Agent (v1.32.0) for automatic instrumentation
+- **Connection**: OTLP gRPC exporter to `otel-collector:4317`
+- **Traces**: Automatic span creation for Kafka operations and HTTP requests
+- **Metrics**: Automatic JVM metrics, Kafka client metrics, and custom application metrics
+- **Logs**: Logback OTEL appender for structured log forwarding
+
+#### 3. Go Applications (Manual SDK)
+- **Configuration**: OpenTelemetry Go SDK with manual setup
+- **Connection**: OTLP gRPC exporter to `otel-collector:4317`
+- **Traces**: Manual span creation with detailed Kafka operation attributes
+- **Metrics**: Custom counters and histograms (e.g., `go.producer.messages_sent`)
+- **Logs**: Standard Go log package (unstructured logging)
+
+### OpenTelemetry Collector Processing Pipeline
+
+The collector (`otel-collector-config.yaml`) processes telemetry data through three parallel pipelines:
+
+**Traces Pipeline**:
+```
+Applications → OTLP Receiver → Batch Processor → OTLP Exporter → Tempo (port 14317)
+```
+
+**Metrics Pipeline**:
+```
+Applications → OTLP Receiver → Batch Processor → Prometheus Exporter (port 8889)
+```
+
+**Logs Pipeline**:
+```
+Applications → OTLP Receiver → Batch Processor → Loki Exporter (port 3100)
+```
+
+### Storage and Visualization Layer
+
+- **Prometheus**: Scrapes metrics from collector endpoint (`otel-collector:8889`) and stores time-series data
+- **Loki**: Receives logs via HTTP push API (`/loki/api/v1/push`) for log aggregation
+- **Tempo**: Receives distributed traces via OTLP gRPC (`tempo:14317`) for trace storage
+- **Grafana**: Queries all three backends using PromQL, LogQL, and TraceQL respectively
+
+### Key Network Configuration
+- **OTEL Collector**: Binds to `0.0.0.0:4317/4318` to accept connections from all containers
+- **Tempo**: Uses ports `14317/14318` to avoid conflicts with OTEL Collector
+- **Service Communication**: All services communicate through Docker Compose internal networking
+
 ## Using the Tutorial
 
 Once the environment is running:

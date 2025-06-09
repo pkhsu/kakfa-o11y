@@ -2,7 +2,5 @@ kafka-python==2.0.2
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0
 opentelemetry-exporter-otlp-proto-grpc==1.22.0
-# opentelemetry-instrumentation-kafka==0.43b0
-# opentelemetry-instrumentation-logging==0.43b0
 pytest
 pytest-mock

@@ -2,7 +2,9 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
       http:
+        endpoint: 0.0.0.0:4318
 
 exporters:
   prometheus:
@@ -17,7 +19,7 @@ exporters:
     #     service_name: "service.name" # Use actual service name from resource attributes
 
   otlp/tempo:
-    endpoint: "tempo:4317" # Tempo's OTLP gRPC port
+    endpoint: "tempo:14317" # Tempo's OTLP gRPC port (updated port)
     tls:
       insecure: true
 

@@ -15,8 +15,8 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME as ResourceAttributesServiceName
 
-from opentelemetry.instrumentation.kafka import KafkaInstrumentor # Auto instrumentation
-from opentelemetry.instrumentation.logging import LoggingInstrumentor # For log correlation
+# from opentelemetry.instrumentation.kafka import KafkaInstrumentor # Auto instrumentation
+# from opentelemetry.instrumentation.logging import LoggingInstrumentor # For log correlation
 
 # --- Configuration ---
 OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "python-kafka-producer")
@@ -48,9 +48,9 @@ def setup_opentelemetry():
     meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
     metrics.set_meter_provider(meter_provider)
 
-    # Auto-instrumentation
-    KafkaInstrumentor().instrument() # Instrument kafka-python
-    LoggingInstrumentor().instrument(set_logging_format=True) # Instrument logging
+    # Auto-instrumentation (disabled for now)
+    # KafkaInstrumentor().instrument() # Instrument kafka-python
+    # LoggingInstrumentor().instrument(set_logging_format=True) # Instrument logging
 
     logger.info(f"OpenTelemetry configured for {OTEL_SERVICE_NAME} sending to {OTEL_EXPORTER_OTLP_ENDPOINT}")
 

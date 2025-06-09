@@ -40,11 +40,11 @@ services:
     container_name: tempo
     ports:
       - "3200:3200" # Tempo HTTP
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "14317:14317" # Tempo OTLP gRPC (different port)
+      - "14318:14318" # Tempo OTLP HTTP (different port)
     volumes:
       - ./tempo:/etc/tempo
-      - tempo_data:/tmp/tempo
+      - tempo_data:/var/tempo
     command:
       - '-config.file=/etc/tempo/tempo.yaml'
     restart: unless-stopped
