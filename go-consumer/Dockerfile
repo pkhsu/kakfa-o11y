@@ -1,24 +1,38 @@
-# Stage 1: Build the Go application
-FROM golang:1.21-alpine AS builder
+# Build stage
+FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev librdkafka-dev
+# Install librdkafka dependencies
+RUN apt-get update && apt-get install -y \
+    librdkafka-dev \
+    pkg-config \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy go mod files
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy source
 COPY . .
+
+# Build
 RUN CGO_ENABLED=1 go build -o /go-consumer main.go
 
-
-# Stage 2: Create the runtime image
-FROM alpine:latest
+# Runtime stage
+FROM ubuntu:latest
 
 WORKDIR /app
 
-RUN apk add --no-cache librdkafka
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    librdkafka1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy binary
 COPY --from=builder /go-consumer /go-consumer
 
 ENV OTEL_SERVICE_NAME="go-kafka-consumer"

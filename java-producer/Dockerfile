@@ -19,9 +19,11 @@ RUN apt-get update && apt-get install -y curl && \
 COPY --from=builder /app/target/java-producer-1.0-SNAPSHOT.jar /app/java-producer.jar
 
 ENV OTEL_SERVICE_NAME="java-kafka-producer"
-ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317" # OTLP gRPC endpoint
+# OTLP gRPC endpoint
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317"
 ENV OTEL_METRICS_EXPORTER="otlp"
-ENV OTEL_LOGS_EXPORTER="otlp" # Send logs via OTLP
+# Send logs via OTLP
+ENV OTEL_LOGS_EXPORTER="otlp"
 ENV OTEL_TRACES_EXPORTER="otlp"
 # Enable Kafka client instrumentation (usually on by default with the agent)
 ENV OTEL_INSTRUMENTATION_KAFKA_ENABLED="true"

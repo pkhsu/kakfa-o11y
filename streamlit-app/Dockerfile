@@ -6,7 +6,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
-COPY content ./content  # Add this line to copy the content directory
+# Copy the content directory
+COPY content ./content
 
 EXPOSE 8501
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   grafana:
     image: grafana/grafana:latest
@@ -21,6 +19,11 @@ services:
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
     restart: unless-stopped
 
   loki:
@@ -40,11 +43,11 @@ services:
     container_name: tempo
     ports:
       - "3200:3200" # Tempo HTTP
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "14317:14317" # Tempo OTLP gRPC (different port)
+      - "14318:14318" # Tempo OTLP HTTP (different port)
     volumes:
       - ./tempo:/etc/tempo
-      - tempo_data:/tmp/tempo
+      - tempo_data:/var/tempo
     command:
       - '-config.file=/etc/tempo/tempo.yaml'
     restart: unless-stopped
@@ -57,6 +60,9 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_JMX_HOSTNAME: zookeeper
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9999"
     restart: unless-stopped
 
   kafka:
@@ -67,6 +73,7 @@ services:
     ports:
       - "9092:9092"
       - "29092:29092"
+      - "9997:9997"  # JMX port
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -79,6 +86,51 @@ services:
       KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # JMX Configuration for monitoring
+      KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_JMX_PORT: 9997
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9997"
+      # Enable structured logging for better log collection
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    # Enable structured logging for Kafka broker
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=kafka,component=broker"
+
+  # Kafka JMX Exporter for Prometheus metrics
+  kafka-jmx-exporter:
+    image: bitnami/jmx-exporter:latest
+    container_name: kafka-jmx-exporter
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./kafka-jmx:/opt/jmx_prometheus
+    command: ["8080", "/opt/jmx_prometheus/kafka-jmx-config.yml"]
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  # Zookeeper JMX Exporter  
+  zookeeper-jmx-exporter:
+    image: bitnami/jmx-exporter:latest
+    container_name: zookeeper-jmx-exporter
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./kafka-jmx:/opt/jmx_prometheus
+    command: ["8081", "/opt/jmx_prometheus/zookeeper-jmx-config.yml"]
+    depends_on:
+      - zookeeper
     restart: unless-stopped
 
   otel-collector:
@@ -90,94 +142,197 @@ services:
       - "4317:4317" # OTLP gRPC
       - "4318:4318" # OTLP HTTP
       - "8889:8889" # Prometheus exporter
+      - "13133:13133" # Health check
+      - "1777:1777" # pprof
+      - "55679:55679" # zpages
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      # Mount Docker socket for container log collection
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/log/containers:ro
+    restart: unless-stopped
     depends_on:
       - loki
       - tempo
       - prometheus
-    restart: unless-stopped
+    # Enable structured logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   java-producer:
     build:
       context: ./java-producer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Zero-code Java Agent Auto-instrumentation
       OTEL_SERVICE_NAME: "java-kafka-producer"
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=producer,language=java"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_METRICS_EXPORTER: "otlp"
       OTEL_LOGS_EXPORTER: "otlp"
       OTEL_TRACES_EXPORTER: "otlp"
+      # Enable comprehensive auto-instrumentation
+      OTEL_JAVAAGENT_ENABLED: "true"
+      OTEL_INSTRUMENTATION_KAFKA_ENABLED: "true"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_ENABLED: "true"
+      OTEL_INSTRUMENTATION_LOGGING_ENABLED: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/app/libs/*", "com.example.HealthCheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   java-consumer:
     build:
       context: ./java-consumer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
-      - java-producer # Optional: to ensure producer starts first, though Kafka handles queuing
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Zero-code Java Agent Auto-instrumentation
       OTEL_SERVICE_NAME: "java-kafka-consumer"
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=consumer,language=java"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_METRICS_EXPORTER: "otlp"
       OTEL_LOGS_EXPORTER: "otlp"
       OTEL_TRACES_EXPORTER: "otlp"
+      # Enable comprehensive auto-instrumentation
+      OTEL_JAVAAGENT_ENABLED: "true"
+      OTEL_INSTRUMENTATION_KAFKA_ENABLED: "true"
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_ENABLED: "true"
+      OTEL_INSTRUMENTATION_LOGGING_ENABLED: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/app/libs/*", "com.example.HealthCheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   python-producer:
     build:
       context: ./python-producer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Zero-code auto-instrumentation via environment variables
       OTEL_SERVICE_NAME: "python-kafka-producer"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=producer,language=python"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      OTEL_PYTHON_LOG_CORRELATION: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('kafka', 9092), timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   python-consumer:
     build:
       context: ./python-consumer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
-      # - python-producer # Optional dependency
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Zero-code auto-instrumentation via environment variables
       OTEL_SERVICE_NAME: "python-kafka-consumer"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=consumer,language=python"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      OTEL_PYTHON_LOG_CORRELATION: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('kafka', 9092), timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   go-producer:
     build:
       context: ./go-producer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Go OpenTelemetry configuration via environment variables
       OTEL_SERVICE_NAME: "go-kafka-producer"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317" # OTLP gRPC endpoint
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=producer,language=go"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "/go-producer", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   go-consumer:
     build:
       context: ./go-consumer
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
-      - kafka
-      - otel-collector
-      # - go-producer # Optional
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
+      # Go OpenTelemetry configuration via environment variables
       OTEL_SERVICE_NAME: "go-kafka-consumer"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=consumer,language=go"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "/go-consumer", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   streamlit-app:
     build:
@@ -186,11 +341,9 @@ services:
       - "8501:8501"
     restart: on-failure
     depends_on:
-      - grafana # For links to Grafana
-      - otel-collector # General dependency for the o11y stack
+      - grafana
+      - otel-collector
     environment:
-      # This URL is for the Streamlit app to construct links for the user's browser.
-      # It assumes Grafana is accessible on localhost:3000 from the user's machine.
       GRAFANA_URL: "http://localhost:3000"
 
 volumes:

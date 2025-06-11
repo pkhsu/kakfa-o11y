@@ -6,23 +6,21 @@ import (
 	"log"
 	"os"
 	"os/signal"
-    // "strings" // Not used
 	"syscall"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelkafka/v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-    "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/propagation"
-    "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
-    "go.opentelemetry.io/otel/attribute"
-    "go.opentelemetry.io/otel/trace"
-    otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -31,10 +29,10 @@ var (
 	kafkaBootstrapServers = getEnv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 	topic                 = "tutorial-topic"
 	groupID               = "go-consumer-group"
-    tracer                trace.Tracer
-    meter                 otelmetric.Meter
-    messagesReceivedCounter otelmetric.Int64Counter
-    processingTimeHistogram otelmetric.Float64Histogram
+	tracer                trace.Tracer
+	meter                 otelmetric.Meter
+	messagesReceivedCounter otelmetric.Int64Counter
+	processingTimeHistogram otelmetric.Float64Histogram
 )
 
 func getEnv(key, fallback string) string {
@@ -53,6 +51,7 @@ func initOtel(ctx context.Context) (func(context.Context) error, func(context.Co
 		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
+	// Trace exporter
 	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(otlpEndpoint))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create OTLP trace exporter: %w", err)
@@ -65,42 +64,40 @@ func initOtel(ctx context.Context) (func(context.Context) error, func(context.Co
 	)
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-    tracer = tracerProvider.Tracer("github.com/example/go-consumer") // Use actual module name
+	tracer = tracerProvider.Tracer("github.com/example/go-consumer")
 
+	// Metric exporter
+	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(otlpEndpoint))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create OTLP metric exporter: %w", err)
+	}
+	meterProvider := metric.NewMeterProvider(
+		metric.WithResource(res),
+		metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(5*time.Second))),
+	)
+	otel.SetMeterProvider(meterProvider)
+	meter = meterProvider.Meter("github.com/example/go-consumer")
 
-    metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(otlpEndpoint))
-    if err != nil {
-        return nil, nil, fmt.Errorf("failed to create OTLP metric exporter: %w", err)
-    }
-    meterProvider := metric.NewMeterProvider(
-        metric.WithResource(res),
-        metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(5*time.Second))),
-    )
-    otel.SetMeterProvider(meterProvider)
-    meter = meterProvider.Meter("github.com/example/go-consumer") // Use actual module name
-
-    messagesReceivedCounter, err = meter.Int64Counter(
-        "go.consumer.messages_received",
-        otelmetric.WithDescription("Counts the number of messages received by the Go consumer"),
-        otelmetric.WithUnit("1"),
-    )
-    if err != nil {
-        return nil, nil, fmt.Errorf("failed to create messagesReceivedCounter: %w", err)
-    }
-    processingTimeHistogram, err = meter.Float64Histogram(
-        "go.consumer.message_processing_duration",
-        otelmetric.WithDescription("Measures the duration of message processing in the Go consumer"),
-        otelmetric.WithUnit("ms"),
-    )
-    if err != nil {
-        return nil, nil, fmt.Errorf("failed to create processingTimeHistogram: %w", err)
-    }
-
+	messagesReceivedCounter, err = meter.Int64Counter(
+		"go.consumer.messages_received",
+		otelmetric.WithDescription("Counts the number of messages received by the Go consumer"),
+		otelmetric.WithUnit("1"),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create messagesReceivedCounter: %w", err)
+	}
+	processingTimeHistogram, err = meter.Float64Histogram(
+		"go.consumer.message_processing_duration",
+		otelmetric.WithDescription("Measures the duration of message processing in the Go consumer"),
+		otelmetric.WithUnit("ms"),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create processingTimeHistogram: %w", err)
+	}
 
 	log.Printf("OpenTelemetry initialized for service: %s, exporting to %s\n", serviceName, otlpEndpoint)
 	return tracerProvider.Shutdown, meterProvider.Shutdown, nil
 }
-
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -111,33 +108,27 @@ func main() {
 		log.Fatalf("Failed to initialize OpenTelemetry: %v", err)
 	}
 	defer func() {
-		if err := tracerShutdown(context.Background()); err != nil { // Use new context for shutdown
+		if err := tracerShutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
-        if err := meterShutdown(context.Background()); err != nil {
-            log.Printf("Error shutting down meter provider: %v", err)
-        }
+		if err := meterShutdown(context.Background()); err != nil {
+			log.Printf("Error shutting down meter provider: %v", err)
+		}
 	}()
 
-	// --- Kafka Consumer Setup ---
+	// Kafka Consumer Setup
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": kafkaBootstrapServers,
 		"group.id":          groupID,
 		"auto.offset.reset": "earliest",
-        "enable.auto.commit": "true", // Auto commit, can be false for manual
+		"enable.auto.commit": "true",
 	})
 	if err != nil {
 		log.Fatalf("Failed to create Kafka consumer: %v", err)
 	}
-	defer c.Close() // Ensure consumer is closed on exit
+	defer c.Close()
 
-	// Instrument the consumer
-	instrumentedConsumer := otelkafka.NewConsumer(c,
-        otelkafka.WithTracerProvider(otel.GetTracerProvider()),
-        otelkafka.WithPropagators(otel.GetTextMapPropagator()),
-    )
-
-	err = instrumentedConsumer.Subscribe(topic, nil)
+	err = c.Subscribe(topic, nil)
 	if err != nil {
 		log.Fatalf("Failed to subscribe to topic %s: %v", topic, err)
 	}
@@ -154,38 +145,36 @@ func main() {
 			log.Printf("Caught signal %v: terminating\n", sig)
 			run = false
 		default:
-            // The otelkafka consumer wrapper handles context propagation from headers.
-            // It starts a span when a message is received.
-			msg, err := instrumentedConsumer.ReadMessage(ctx, 100*time.Millisecond) // Poll with timeout
+			msg, err := c.ReadMessage(100 * time.Millisecond)
 
 			if err != nil {
-				// Errors other than timeout
 				if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
 					log.Printf("Consumer error: %v (%v)\n", err, msg)
-                    messagesReceivedCounter.Add(ctx, 1, otelmetric.WithAttributes(attribute.String("status", "error")))
+					messagesReceivedCounter.Add(ctx, 1, otelmetric.WithAttributes(attribute.String("status", "error")))
 				}
-				continue // Continue polling on timeout or other non-fatal errors
+				continue
 			}
 
-            processCtx, processSpan := tracer.Start(otelkafka.ContextFromMessage(ctx, msg), "process_go_kafka_message")
-            startTime := time.Now()
+			// Create span for message processing
+			processCtx, processSpan := tracer.Start(ctx, "process_go_kafka_message")
+			startTime := time.Now()
 
 			log.Printf("Received message on %s [%d] at offset %v: key=%s, value=%s\n",
 				*msg.TopicPartition.Topic, msg.TopicPartition.Partition, msg.TopicPartition.Offset,
 				string(msg.Key), string(msg.Value))
 
-            // Simulate processing
-            time.Sleep(50 * time.Millisecond)
+			// Simulate processing
+			time.Sleep(50 * time.Millisecond)
 
-            messagesReceivedCounter.Add(processCtx, 1, otelmetric.WithAttributes(attribute.String("status", "success")))
-            processSpan.SetAttributes(
-                attribute.Int("messaging.kafka.partition", int(msg.TopicPartition.Partition)),
-                attribute.Int("messaging.kafka.offset", int(msg.TopicPartition.Offset)),
-                attribute.String("custom.processing.status", "completed"),
-            )
-            processingDurationMs := float64(time.Since(startTime).Microseconds()) / 1000.0
-            processingTimeHistogram.Record(processCtx, processingDurationMs)
-            processSpan.End()
+			messagesReceivedCounter.Add(processCtx, 1, otelmetric.WithAttributes(attribute.String("status", "success")))
+			processSpan.SetAttributes(
+				attribute.Int("messaging.kafka.partition", int(msg.TopicPartition.Partition)),
+				attribute.Int("messaging.kafka.offset", int(msg.TopicPartition.Offset)),
+				attribute.String("custom.processing.status", "completed"),
+			)
+			processingDurationMs := float64(time.Since(startTime).Microseconds()) / 1000.0
+			processingTimeHistogram.Record(processCtx, processingDurationMs)
+			processSpan.End()
 		}
 	}
 	log.Println("Closing consumer...")
