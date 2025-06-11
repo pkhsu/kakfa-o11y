@@ -11,14 +11,17 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	otelmetric "go.opentelemetry.io/otel/metric"
+	otellog "go.opentelemetry.io/otel/log"
 )
 
 var (
@@ -28,6 +31,7 @@ var (
 	topic                 = "tutorial-topic"
 	tracer                trace.Tracer
 	meter                 otelmetric.Meter
+	logger                otellog.Logger
 	messagesSentCounter   otelmetric.Int64Counter
 )
 
@@ -38,19 +42,19 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func initOtel(ctx context.Context) (func(context.Context) error, func(context.Context) error, error) {
+func initOtel(ctx context.Context) (func(context.Context) error, func(context.Context) error, func(context.Context) error, error) {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(semconv.ServiceNameKey.String(serviceName)),
 		resource.WithSchemaURL(semconv.SchemaURL),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	// Trace exporter
 	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(otlpEndpoint))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create OTLP trace exporter: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create OTLP trace exporter: %w", err)
 	}
 	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
 	tracerProvider := sdktrace.NewTracerProvider(
@@ -65,7 +69,7 @@ func initOtel(ctx context.Context) (func(context.Context) error, func(context.Co
 	// Metric exporter
 	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(otlpEndpoint))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create OTLP metric exporter: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create OTLP metric exporter: %w", err)
 	}
 	meterProvider := metric.NewMeterProvider(
 		metric.WithResource(res),
@@ -74,24 +78,71 @@ func initOtel(ctx context.Context) (func(context.Context) error, func(context.Co
 	otel.SetMeterProvider(meterProvider)
 	meter = meterProvider.Meter("github.com/example/go-producer")
 
+	// Log exporter
+	logExporter, err := otlploggrpc.New(ctx, otlploggrpc.WithInsecure(), otlploggrpc.WithEndpoint(otlpEndpoint))
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create OTLP log exporter: %w", err)
+	}
+	loggerProvider := sdklog.NewLoggerProvider(
+		sdklog.WithResource(res),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+	)
+	// Note: OpenTelemetry Go doesn't have global logger provider like traces/metrics
+	// We'll use the loggerProvider directly
+	logger = loggerProvider.Logger("github.com/example/go-producer")
+
 	messagesSentCounter, err = meter.Int64Counter(
 		"go.producer.messages_sent",
 		otelmetric.WithDescription("Counts the number of messages sent by the Go producer"),
 		otelmetric.WithUnit("1"),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create messagesSentCounter: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create messagesSentCounter: %w", err)
 	}
 
 	log.Printf("OpenTelemetry initialized for service: %s, exporting to %s\n", serviceName, otlpEndpoint)
-	return tracerProvider.Shutdown, meterProvider.Shutdown, nil
+	return tracerProvider.Shutdown, meterProvider.Shutdown, loggerProvider.Shutdown, nil
+}
+
+func healthCheck() error {
+	// Simple health check - test Kafka connectivity
+	p, err := kafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers": kafkaBootstrapServers,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Kafka producer: %w", err)
+	}
+	defer p.Close()
+
+	// Test basic connection by getting cluster metadata
+	metadata, err := p.GetMetadata(nil, false, 5000)
+	if err != nil {
+		return fmt.Errorf("failed to get Kafka metadata: %w", err)
+	}
+	
+	if len(metadata.Brokers) == 0 {
+		return fmt.Errorf("no Kafka brokers available")
+	}
+	
+	return nil
 }
 
 func main() {
+	// Handle health check argument
+	if len(os.Args) > 1 && os.Args[1] == "--health-check" {
+		err := healthCheck()
+		if err != nil {
+			log.Printf("Health check failed: %v", err)
+			os.Exit(1)
+		}
+		log.Println("Health check passed")
+		os.Exit(0)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tracerShutdown, meterShutdown, err := initOtel(ctx)
+	tracerShutdown, meterShutdown, loggerShutdown, err := initOtel(ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize OpenTelemetry: %v", err)
 	}
@@ -101,6 +152,9 @@ func main() {
 		}
 		if err := meterShutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down meter provider: %v", err)
+		}
+		if err := loggerShutdown(context.Background()); err != nil {
+			log.Printf("Error shutting down logger provider: %v", err)
 		}
 	}()
 
@@ -127,11 +181,47 @@ func main() {
 		}, nil)
 
 		if err != nil {
-			log.Printf("Failed to produce message: %v\n", err)
+			// Standard log for container logs
+			log.Printf("[ERROR] [go-producer] Failed to produce message to topic=%s: %v", topic, err)
+			// OpenTelemetry structured log
+			var record otellog.Record
+			record.SetTimestamp(time.Now())
+			record.SetObservedTimestamp(time.Now())
+			record.SetSeverity(otellog.SeverityError)
+			record.SetSeverityText("ERROR")
+			record.SetBody(otellog.StringValue(fmt.Sprintf("Failed to produce message to topic=%s: %v", topic, err)))
+			record.AddAttributes(
+				otellog.String("service.name", "go-producer"),
+				otellog.String("kafka.topic", topic),
+				otellog.String("operation", "kafka_produce"),
+				otellog.String("status", "error"),
+				otellog.String("error", err.Error()),
+				otellog.String("component", "kafka"),
+				otellog.String("language", "go"),
+			)
+			logger.Emit(spanCtx, record)
 			messagesSentCounter.Add(spanCtx, 1, otelmetric.WithAttributes(attribute.String("status", "error")))
 			span.SetAttributes(attribute.String("error", err.Error()))
 		} else {
-			log.Printf("Message sent successfully: %s\n", message)
+			// Standard log for container logs
+			log.Printf("[INFO] [go-producer] Message sent successfully to topic=%s: %s", topic, message)
+			// OpenTelemetry structured log
+			var record otellog.Record
+			record.SetTimestamp(time.Now())
+			record.SetObservedTimestamp(time.Now())
+			record.SetSeverity(otellog.SeverityInfo)
+			record.SetSeverityText("INFO")
+			record.SetBody(otellog.StringValue(fmt.Sprintf("Message sent successfully to topic=%s: %s", topic, message)))
+			record.AddAttributes(
+				otellog.String("service.name", "go-producer"),
+				otellog.String("kafka.topic", topic),
+				otellog.String("message.content", message),
+				otellog.String("operation", "kafka_produce"),
+				otellog.String("status", "success"),
+				otellog.String("component", "kafka"),
+				otellog.String("language", "go"),
+			)
+			logger.Emit(spanCtx, record)
 			messagesSentCounter.Add(spanCtx, 1, otelmetric.WithAttributes(attribute.String("status", "success")))
 			span.SetAttributes(
 				attribute.String("kafka.topic", topic),
