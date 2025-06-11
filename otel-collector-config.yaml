@@ -22,15 +22,16 @@ receivers:
             - targets: ['localhost:8888']
 
   # File log receiver for Docker container logs (including Kafka broker logs)
-  filelog:
-    include: [/var/log/containers/*/*-json.log]
-    operators:
-      - type: json_parser
-        id: parser-docker
-        parse_from: body
-      - type: move
-        from: attributes.log
-        to: body
+  # Temporarily disabled due to permission issues - focusing on OTLP logs
+  # filelog:
+  #   include: [/var/log/containers/*/*-json.log]
+  #   operators:
+  #     - type: json_parser
+  #       id: parser-docker
+  #       parse_from: body
+  #     - type: move
+  #       from: attributes.log
+  #       to: body
 
   # Docker stats receiver for container metrics
   docker_stats:
@@ -62,12 +63,12 @@ processors:
     limit_mib: 512
     check_interval: 5s
 
-  # Filter processor to clean up logs
-  filter:
-    logs:
-      log_record:
-        - 'IsMatch(body, ".*DEBUG.*") == false'
-        - 'IsMatch(body, ".*TRACE.*") == false'
+  # Filter processor to clean up logs (temporarily disabled for debugging)
+  # filter:
+  #   logs:
+  #     log_record:
+  #       - 'IsMatch(body, ".*DEBUG.*") == false'
+  #       - 'IsMatch(body, ".*TRACE.*") == false'
 
   # Attributes processor for logs enrichment
   attributes/logs:
@@ -98,7 +99,9 @@ exporters:
 
   # Debug exporter (optional, for troubleshooting)
   debug:
-    verbosity: basic
+    verbosity: detailed
+    sampling_initial: 10
+    sampling_thereafter: 100
 
 extensions:
   health_check:
@@ -126,12 +129,12 @@ service:
 
     # Logs pipeline
     logs:
-      receivers: [otlp, filelog]
-      processors: [memory_limiter, resourcedetection, filter, attributes/logs, batch, resource]
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/logs, batch, resource]
       exporters: [loki, debug]
 
   telemetry:
     logs:
-      level: "info"
+      level: "debug"
     metrics:
       address: 0.0.0.0:8888

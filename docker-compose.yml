@@ -147,9 +147,10 @@ services:
       - "55679:55679" # zpages
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-      # Mount Docker socket for container log collection
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/log/containers:ro
+      # Docker socket mounting disabled due to permission issues
+      # Focus on OTLP application logs instead of container logs
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /var/lib/docker/containers:/var/log/containers:ro
     restart: unless-stopped
     depends_on:
       - loki
@@ -243,8 +244,8 @@ services:
       OTEL_SERVICE_VERSION: "1.0.0"
       OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=producer,language=python"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_EXPORTER_OTLP_INSECURE: "true"
       OTEL_PYTHON_LOG_CORRELATION: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
@@ -270,8 +271,8 @@ services:
       OTEL_SERVICE_VERSION: "1.0.0"
       OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=consumer,language=python"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_EXPORTER_OTLP_INSECURE: "true"
       OTEL_PYTHON_LOG_CORRELATION: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
@@ -297,8 +298,8 @@ services:
       OTEL_SERVICE_VERSION: "1.0.0"
       OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=producer,language=go"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_EXPORTER_OTLP_INSECURE: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
     healthcheck:
@@ -323,8 +324,8 @@ services:
       OTEL_SERVICE_VERSION: "1.0.0"
       OTEL_SERVICE_NAMESPACE: "kafka-tutorial"
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=tutorial,component.type=consumer,language=go"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_EXPORTER_OTLP_INSECURE: "true"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
     healthcheck:
