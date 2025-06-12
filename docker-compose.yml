@@ -1,6 +1,6 @@
 services:
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.2
     container_name: grafana
     ports:
       - "3000:3000"
@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.49.1
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.5
     container_name: loki
     ports:
       - "3100:3100"
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.3.1
     container_name: tempo
     ports:
       - "3200:3200" # Tempo HTTP
@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.3.3
     container_name: zookeeper
     ports:
       - "2181:2181"
@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.3
     container_name: kafka
     depends_on:
       - zookeeper
@@ -109,7 +109,7 @@ services:
 
   # Kafka JMX Exporter for Prometheus metrics
   kafka-jmx-exporter:
-    image: bitnami/jmx-exporter:latest
+    image: bitnami/jmx-exporter:0.20.0
     container_name: kafka-jmx-exporter
     ports:
       - "8080:8080"
@@ -122,7 +122,7 @@ services:
 
   # Zookeeper JMX Exporter  
   zookeeper-jmx-exporter:
-    image: bitnami/jmx-exporter:latest
+    image: bitnami/jmx-exporter:0.20.0
     container_name: zookeeper-jmx-exporter
     ports:
       - "8081:8081"
@@ -134,7 +134,7 @@ services:
     restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.92.0
     container_name: otel-collector
     command:
       - '--config=/etc/otelcol-contrib/config.yaml'
