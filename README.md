@@ -204,16 +204,16 @@ df -h                      # Verify disk space
 ### Deployment Steps
 
 1. **Clone and Setup**
-   ```bash
-   git clone <repository_url>
+    ```bash
+    git clone <repository_url>
    cd kakfa-o11y
    chmod +x start.sh
-   ```
+    ```
 
 2. **Start the Environment**
-   ```bash
-   ./start.sh
-   ```
+    ```bash
+    ./start.sh
+    ```
    
    The script will:
    - Validate system prerequisites
@@ -263,9 +263,9 @@ df -h                      # Verify disk space
 ### Essential Monitoring Scenarios
 
 #### **Scenario 1: Performance Investigation**
-```bash
+        ```bash
 # Generate load and observe
-docker compose logs -f python-producer
+        docker compose logs -f python-producer
 ```
 
 **In Grafana:**
@@ -478,7 +478,7 @@ tar czf config-backup.tar.gz grafana/ prometheus/ loki/ tempo/
 | **Storage Growth** | Disk space warnings | Implement retention policies |
 
 #### **Diagnostic Commands**
-```bash
+    ```bash
 # View detailed logs
 docker compose logs --tail=100 -f [service-name]
 
@@ -528,7 +528,7 @@ docker compose exec kafka kafka-broker-api-versions --bootstrap-server localhost
 | `http://localhost:55679` | zPages | 55679 |
 
 ### Grafana API
-```bash
+    ```bash
 # Create dashboard
 curl -X POST http://admin:admin@localhost:3000/api/dashboards/db \
   -H "Content-Type: application/json" \
@@ -539,7 +539,7 @@ curl -X GET "http://admin:admin@localhost:3000/api/datasources/proxy/1/api/v1/qu
 ```
 
 ### Prometheus API
-```bash
+    ```bash
 # Query metrics
 curl "http://localhost:9090/api/v1/query?query=kafka_messages_sent_total"
 
@@ -554,26 +554,26 @@ curl "http://localhost:9090/api/v1/query_range?query=rate(kafka_messages_sent_to
 ### Unit Testing
 
 #### **Java Applications**
-```bash
+    ```bash
 cd java-producer && mvn test
 cd java-consumer && mvn test
-```
+    ```
 
 #### **Python Applications**  
-```bash
+    ```bash
 cd python-producer && pytest -v
 cd python-consumer && pytest -v
 cd streamlit-app && pytest -v
 ```
 
 #### **Go Applications**
-```bash
+    ```bash
 cd go-producer && go test -v ./...
 cd go-consumer && go test -v ./...
-```
+    ```
 
 ### Integration Testing
-```bash
+    ```bash
 # Manual integration test - verify all services are running
 docker compose ps
 
@@ -587,7 +587,7 @@ docker compose logs -f go-consumer | head -20
 ## Contributing & Support
 
 ### Development Setup
-```bash
+    ```bash
 # Clone repository
 git clone <repository_url>
 cd kakfa-o11y
@@ -633,7 +633,7 @@ docker compose up --build
 ### Environment Variables Reference
 
 #### **OpenTelemetry Configuration**
-```bash
+    ```bash
 OTEL_SERVICE_NAME=your-service-name
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
 OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production
@@ -643,7 +643,7 @@ OTEL_TRACES_EXPORTER=otlp
 ```
 
 #### **Kafka Configuration**
-```bash
+    ```bash
 KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 KAFKA_AUTO_OFFSET_RESET=earliest
 KAFKA_CONSUMER_GROUP_ID=your-consumer-group
