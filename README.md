@@ -1,22 +1,24 @@
 # Kafka APM & Observability Solution Demo
 
-> **A comprehensive Application Performance Monitoring (APM) and observability solution for Apache Kafka environments, demonstrating enterprise-grade monitoring, alerting, and troubleshooting capabilities.**
+> **A demonstration of Application Performance Monitoring (APM) and observability patterns for Apache Kafka environments, showcasing monitoring, alerting, and troubleshooting capabilities.**
+
+**Note: This is a proof-of-concept demo project for learning and evaluation purposes, not intended for production use without significant modifications.**
 
 ## Executive Summary
 
-This project demonstrates a **production-ready APM solution** for Kafka operations teams, showcasing how to achieve **complete visibility into Kafka-based microservices architectures**. The solution provides:
+This project demonstrates an **APM solution concept** for Kafka operations teams, showcasing how to achieve **complete visibility into Kafka-based microservices architectures**. This demo provides:
 
 - **End-to-End Visibility**: Full observability across producers, consumers, brokers, and infrastructure
 - **Rapid Problem Resolution**: Reduce MTTR from hours to minutes with correlated metrics, logs, and traces
 - **Proactive Monitoring**: Early detection of performance degradation and capacity issues
 - **Multi-Language Support**: Unified observability across Java, Python, and Go applications
-- **Enterprise-Grade Stack**: Built on OpenTelemetry standards with proven open-source tools
+- **Modern Observability Stack**: Built on OpenTelemetry standards with proven open-source tools
 
-### Business Impact
-- **Significant reduction** in troubleshooting time through correlated telemetry
-- **Proactive capacity planning** with trend analysis and comprehensive metrics
-- **Improved operational visibility** with comprehensive monitoring and alerting
-- **Enhanced system reliability** through automated monitoring and early issue detection
+### Demo Value
+- **Demonstrates reduction** in troubleshooting time through correlated telemetry
+- **Shows capacity planning** capabilities with trend analysis and comprehensive metrics
+- **Illustrates operational visibility** with comprehensive monitoring and alerting
+- **Showcases observability patterns** for automated monitoring and early issue detection
 
 ---
 
@@ -184,7 +186,7 @@ The solution implements **comprehensive correlation** across all telemetry types
 
 **System Requirements:**
 - Docker Engine 20.10+ with Compose V2
-- 4GB+ RAM (8GB recommended for optimal performance)
+- 4GB+ RAM (8GB recommended for demo environment)
 - 5GB+ free disk space
 - Network access for Docker image downloads
 
@@ -314,9 +316,9 @@ kafka_consumer_lag_sum
 rate(kafka_network_io_bytes_total[5m])
 ```
 
-### Alerting Strategy
+### Example Alerting Rules
 
-#### Critical Alerts
+#### Sample Alert Configurations
 ```yaml
 # High Consumer Lag
 - alert: KafkaConsumerLagHigh
@@ -336,31 +338,31 @@ rate(kafka_network_io_bytes_total[5m])
 
 ---
 
-## Production Customization Guide
+## Customization & Extension Guide
 
 ### Scaling Considerations
 
-#### **Horizontal Scaling**
+#### **Horizontal Scaling (Demo)**
 ```yaml
-# Scale producers/consumers
+# Scale producers/consumers for testing
 docker compose up --scale python-producer=3 --scale java-consumer=2
 
-# Kafka cluster scaling (requires additional configuration)
-# See: Multi-broker setup in production
+# Note: This demo uses single Kafka broker
+# Multi-broker setup would require additional configuration
 ```
 
-#### **Resource Optimization**
+#### **Resource Optimization (Example)**
 ```yaml
-# Optimized JVM settings for production
+# Example JVM settings for testing
 environment:
   JAVA_OPTS: >-
     -XX:+UseG1GC
     -XX:MaxGCPauseMillis=20
     -XX:InitiatingHeapOccupancyPercent=35
-    -Xms2g -Xmx4g
+    -Xms512m -Xmx1g
 ```
 
-### Security Hardening
+### Security Considerations (Reference)
 
 #### **Authentication & Authorization**
 ```yaml
@@ -382,7 +384,7 @@ otel-collector:
     OTEL_EXPORTER_OTLP_CERTIFICATE: /etc/ssl/certs/cert.pem
 ```
 
-### Integration with Existing Infrastructure
+### Integration Examples
 
 #### **External Prometheus/Grafana**
 ```yaml
@@ -651,4 +653,4 @@ KAFKA_CONSUMER_GROUP_ID=your-consumer-group
 
 **For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/your-org/kafka-o11y-demo)**
 
-*This demo showcases enterprise-grade observability patterns and is suitable for production adaptation with appropriate security and scaling considerations.*
+*This demo showcases modern observability patterns for educational and evaluation purposes. Significant modifications would be required for production deployment.*
