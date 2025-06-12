@@ -41,6 +41,15 @@ rules:
       component: "network"
       request: $3
 
+  # Network request time percentiles
+  - pattern: "kafka.network<type=(.+), name=(.+), request=(.+)><>99thPercentile"
+    name: kafka_network_$1_$2_p99
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $3
+
   # Topic partition metrics
   - pattern: "kafka.log<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value"
     name: kafka_log_$1_$2
@@ -77,6 +86,252 @@ rules:
       instance: "kafka"
       component: "consumer"
       client_id: $3
+
+  # === NEW COMPREHENSIVE METRICS ===
+
+  # Cluster Health & Leadership
+  - pattern: "kafka.controller<type=KafkaController, name=ActiveControllerCount><>Value"
+    name: kafka_controller_active_count
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value"
+    name: kafka_controller_offline_partitions_count
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=PreferredReplicaImbalanceCount><>Value"
+    name: kafka_controller_preferred_replica_imbalance_count
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.server<type=ReplicaManager, name=UnderReplicatedPartitions><>Value"
+    name: kafka_server_replica_manager_under_replicated_partitions
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "replica_manager"
+
+  # Throughput & Performance
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec, topic=(.+)><>Count"
+    name: kafka_server_brokertopicmetrics_messages_in_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: $1
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec><>Count"
+    name: kafka_server_brokertopicmetrics_messages_in_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: "all"
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec, topic=(.+)><>Count"
+    name: kafka_server_brokertopicmetrics_bytes_in_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: $1
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec><>Count"
+    name: kafka_server_brokertopicmetrics_bytes_in_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: "all"
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=BytesOutPerSec, topic=(.+)><>Count"
+    name: kafka_server_brokertopicmetrics_bytes_out_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: $1
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=BytesOutPerSec><>Count"
+    name: kafka_server_brokertopicmetrics_bytes_out_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: "all"
+
+  - pattern: "kafka.network<type=Processor, name=IdlePercent, networkProcessor=(.+)><>Value"
+    name: kafka_network_processor_idle_percent
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      processor: $1
+
+  - pattern: "kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>Value"
+    name: kafka_server_kafka_request_handler_avg_idle_percent
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "request_handler"
+
+  # Storage & Disk Metrics
+  - pattern: "kafka.log<type=Log, name=Size, topic=(.+), partition=(.+)><>Value"
+    name: kafka_log_log_size_bytes
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "log"
+      topic: $1
+      partition: $2
+
+  - pattern: "kafka.log<type=Log, name=LogStartOffset, topic=(.+), partition=(.+)><>Value"
+    name: kafka_log_log_start_offset
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "log"
+      topic: $1
+      partition: $2
+
+  - pattern: "kafka.log<type=Log, name=LogEndOffset, topic=(.+), partition=(.+)><>Value"
+    name: kafka_log_log_end_offset
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "log"
+      topic: $1
+      partition: $2
+
+  - pattern: "kafka.log<type=LogFlushStats, name=LogFlushRateAndTimeMs><>Count"
+    name: kafka_log_log_flush_rate_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "log"
+
+  # Advanced Network Request Metrics
+  - pattern: "kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>Count"
+    name: kafka_network_request_total_time_ms_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>Mean"
+    name: kafka_network_request_total_time_ms_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.network<type=RequestMetrics, name=RequestQueueTimeMs, request=(.+)><>Mean"
+    name: kafka_network_request_queue_time_ms_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.network<type=RequestMetrics, name=LocalTimeMs, request=(.+)><>Mean"
+    name: kafka_network_request_local_time_ms_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.network<type=RequestMetrics, name=ResponseQueueTimeMs, request=(.+)><>Mean"
+    name: kafka_network_response_queue_time_ms_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.network<type=RequestMetrics, name=ResponseSendTimeMs, request=(.+)><>Mean"
+    name: kafka_network_response_send_time_ms_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  # Consumer Group Coordination
+  - pattern: "kafka.coordinator.group<type=GroupMetadataManager, name=NumGroups><>Value"
+    name: kafka_coordinator_group_metadata_manager_num_groups
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "group_coordinator"
+
+  - pattern: "kafka.coordinator.group<type=GroupMetadataManager, name=NumOffsets><>Value"
+    name: kafka_coordinator_group_metadata_manager_num_offsets
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "group_coordinator"
+
+  # Error & Exception Metrics
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=FailedFetchRequestsPerSec, topic=(.+)><>Count"
+    name: kafka_server_brokertopicmetrics_failed_fetch_requests_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: $1
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=FailedFetchRequestsPerSec><>Count"
+    name: kafka_server_brokertopicmetrics_failed_fetch_requests_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: "all"
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=FailedProduceRequestsPerSec, topic=(.+)><>Count"
+    name: kafka_server_brokertopicmetrics_failed_produce_requests_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: $1
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=FailedProduceRequestsPerSec><>Count"
+    name: kafka_server_brokertopicmetrics_failed_produce_requests_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "broker"
+      topic: "all"
+
+  # Connection Metrics
+  - pattern: "kafka.server<type=socket-server-metrics, listener=(.+), networkProcessor=(.+)><>connection-count"
+    name: kafka_server_socket_server_connection_count
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "socket_server"
+      listener: $1
+      processor: $2
+
+  - pattern: "kafka.server<type=socket-server-metrics, listener=(.+), networkProcessor=(.+)><>connection-creation-rate"
+    name: kafka_server_socket_server_connection_creation_rate
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "socket_server"
+      listener: $1
+      processor: $2
 
   # JVM metrics
   - pattern: "java.lang<type=(.+), name=(.+)><>(.+)"

@@ -7,7 +7,7 @@ global:
 
 # Rule files for alerting
 rule_files:
-  # - "alert_rules.yml"
+  - "kafka_broker_alerts.yml"
 
 scrape_configs:
   # Prometheus self-monitoring

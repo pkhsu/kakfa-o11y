@@ -1,0 +1,212 @@
+groups:
+  - name: kafka_broker_health
+    rules:
+      # Cluster Health Alerts
+      - alert: KafkaControllerDown
+        expr: kafka_controller_kafkacontroller_activecontrollercount < 1
+        for: 30s
+        labels:
+          severity: critical
+          component: kafka
+          type: cluster_health
+        annotations:
+          summary: "Kafka cluster has no active controller"
+          description: "Kafka cluster {{ $labels.cluster }} has no active controller. This will prevent partition leadership changes and new topic creation."
+
+      - alert: KafkaOfflinePartitions
+        expr: kafka_controller_kafkacontroller_offlinepartitionscount > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: kafka
+          type: cluster_health
+        annotations:
+          summary: "Kafka has offline partitions"
+          description: "Kafka cluster {{ $labels.cluster }} has {{ $value }} offline partitions. Data loss may occur."
+
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_server_replicamanager_underreplicatedpartitions > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: cluster_health
+        annotations:
+          summary: "Kafka has under-replicated partitions"
+          description: "Kafka cluster {{ $labels.cluster }} has {{ $value }} under-replicated partitions. Replication factor is not met."
+
+      - alert: KafkaPreferredReplicaImbalance
+        expr: kafka_controller_kafkacontroller_preferredreplicaimbalancecount > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: kafka
+          type: cluster_health
+        annotations:
+          summary: "Kafka has preferred replica imbalance"
+          description: "Kafka cluster {{ $labels.cluster }} has {{ $value }} preferred replica imbalances. Consider running preferred replica election."
+
+  - name: kafka_broker_performance
+    rules:
+      # Performance Alerts
+      - alert: KafkaHighRequestLatency
+        expr: kafka_network_requestmetrics_localtimems_mean{request=~"Produce|Fetch"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: performance
+        annotations:
+          summary: "Kafka request latency is high"
+          description: "Kafka {{ $labels.request }} request latency is {{ $value }}ms on {{ $labels.instance }}"
+
+      - alert: KafkaLowNetworkProcessorIdle
+        expr: kafka_network_processor_idle_percent < 30
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: performance
+        annotations:
+          summary: "Kafka network processor utilization is high"
+          description: "Kafka network processor idle percentage is {{ $value }}% on {{ $labels.instance }}"
+
+
+
+      - alert: KafkaHighThroughput
+        expr: rate(kafka_server_brokertopicmetrics_bytes_in{topic="all"}[5m]) > 100000000  # 100 MB/s
+        for: 2m
+        labels:
+          severity: info
+          component: kafka
+          type: performance
+        annotations:
+          summary: "Kafka is handling high throughput"
+          description: "Kafka is processing {{ $value | humanize1024 }}B/s of incoming data on {{ $labels.instance }}"
+
+  - name: kafka_broker_errors
+    rules:
+      # Error Rate Alerts
+      - alert: KafkaHighProduceFailureRate
+        expr: rate(kafka_server_brokertopicmetrics_failed_produce_requests{topic="all"}[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+          component: kafka
+          type: errors
+        annotations:
+          summary: "High Kafka produce failure rate"
+          description: "Kafka produce failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: KafkaHighFetchFailureRate
+        expr: rate(kafka_server_brokertopicmetrics_failed_fetch_requests{topic="all"}[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+          component: kafka
+          type: errors
+        annotations:
+          summary: "High Kafka fetch failure rate"
+          description: "Kafka fetch failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: KafkaHighNetworkErrors
+        expr: rate(kafka_network_requestmetrics_errorspersec[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: kafka
+          type: errors
+        annotations:
+          summary: "High Kafka network error rate"
+          description: "Kafka network error rate is {{ $value }} errors/sec on {{ $labels.instance }}"
+
+  - name: kafka_broker_storage
+    rules:
+      # Storage Alerts
+      - alert: KafkaLogFlushSlow
+        expr: rate(kafka_log_log_flush_rate[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: storage
+        annotations:
+          summary: "Kafka log flush rate is high"
+          description: "Kafka is flushing logs {{ $value }} times per second, which may indicate storage performance issues"
+
+
+
+  - name: kafka_broker_network
+    rules:
+      # Network Connection Alerts
+      - alert: KafkaHighConnectionCount
+        expr: kafka_server_socket_server_connection_count > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: network
+        annotations:
+          summary: "Kafka has high connection count"
+          description: "Kafka has {{ $value }} active connections on listener {{ $labels.listener }}"
+
+      - alert: KafkaHighConnectionCreationRate
+        expr: rate(kafka_server_socket_server_connection_creation_rate[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+          component: kafka
+          type: network
+        annotations:
+          summary: "High Kafka connection creation rate"
+          description: "Kafka is creating {{ $value }} connections per second on listener {{ $labels.listener }}"
+
+  - name: kafka_broker_consumer_groups
+    rules:
+      # Consumer Group Alerts
+      - alert: KafkaHighConsumerGroupCount
+        expr: kafka_coordinator_group_metadata_manager_num_groups > 100
+        for: 10m
+        labels:
+          severity: info
+          component: kafka
+          type: consumer_groups
+        annotations:
+          summary: "High number of Kafka consumer groups"
+          description: "Kafka is managing {{ $value }} consumer groups"
+
+      - alert: KafkaHighOffsetCount
+        expr: kafka_coordinator_group_metadata_manager_num_offsets > 10000
+        for: 10m
+        labels:
+          severity: info
+          component: kafka
+          type: consumer_groups
+        annotations:
+          summary: "High number of stored offsets"
+          description: "Kafka is storing {{ $value }} consumer offsets"
+
+  - name: kafka_broker_cluster_info
+    rules:
+      # Cluster Information Alerts
+      - alert: KafkaHighPartitionCount
+        expr: kafka_controller_kafkacontroller_globalpartitioncount > 1000
+        for: 10m
+        labels:
+          severity: info
+          component: kafka
+          type: cluster_info
+        annotations:
+          summary: "High number of Kafka partitions"
+          description: "Kafka cluster has {{ $value }} partitions across all topics"
+
+      - alert: KafkaHighTopicCount
+        expr: kafka_controller_kafkacontroller_globaltopiccount > 100
+        for: 10m
+        labels:
+          severity: info
+          component: kafka
+          type: cluster_info
+        annotations:
+          summary: "High number of Kafka topics"
+          description: "Kafka cluster has {{ $value }} topics" 

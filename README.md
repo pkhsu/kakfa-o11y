@@ -22,7 +22,8 @@ This project provides a hands-on tutorial for understanding and implementing obs
 *   **Docker Compose**: Entire environment orchestrated with Docker Compose for easy setup.
 *   **Streamlit Tutorial App**: A web-based guide to navigate the tutorial (content currently minimal).
 *   **`start.sh` script**: For easy environment startup.
-*   **Pre-configured Grafana Dashboard**: An overview dashboard (`Kafka O11y Tutorial Overview`) is automatically provisioned in Grafana.
+*   **Pre-configured Grafana Dashboard**: An enhanced overview dashboard (`Kafka O11y Tutorial Overview - Enhanced Broker Monitoring`) is automatically provisioned in Grafana with comprehensive Kafka broker monitoring.
+*   **Comprehensive Kafka Broker Monitoring**: 50+ JMX metrics covering cluster health, throughput, storage, network performance, and JVM status with intelligent alerting.
 
 ## Project Structure
 
@@ -96,20 +97,40 @@ Once the environment is running:
     *   Access Grafana: `http://localhost:3000`
     *   Default credentials: `admin` / `admin` (you may be prompted to change the password on first login).
 
-    **0. Check the Pre-configured 'Kafka O11y Tutorial Overview' Dashboard**:
+    **0. Check the Enhanced 'Kafka O11y Tutorial Overview - Enhanced Broker Monitoring' Dashboard**:
     *   In Grafana's left sidebar, navigate to "Dashboards".
-    *   Look for and open the dashboard titled "Kafka O11y Tutorial Overview".
-    *   This dashboard provides a quick glance at message rates for producers/consumers and other relevant metrics from the system.
+    *   Look for and open the dashboard titled "Kafka O11y Tutorial Overview - Enhanced Broker Monitoring".
+    *   This dashboard provides comprehensive visibility into:
+        *   **Cluster Health**: Controller status, offline partitions, under-replicated partitions
+        *   **Broker Performance**: Message throughput, request latency, network utilization
+        *   **Storage Metrics**: Topic sizes, partition growth, log management
+        *   **Error Monitoring**: Failed requests and exception rates
+        *   **JVM Health**: Garbage collection, memory usage
+        *   **Consumer Groups**: Active groups and offset management
+        *   **Application Metrics**: Producer/consumer rates from your applications
 
     **b. Metrics (Prometheus Data Source)**:
     *   In Grafana, go to "Explore" or create/edit a Dashboard panel.
     *   Select the "Prometheus" data source.
     *   Example PromQL queries:
-        *   `rate(otelcol_process_uptime[5m])` (OTel Collector's own uptime)
-        *   `rate(python_producer_messages_sent_total[1m])` (Custom metric from Python producer)
-        *   `rate(go_producer_messages_sent_total[1m])` (Custom metric from Go producer)
-        *   `jvm_memory_used_bytes{area="heap", service_name="java-kafka-producer"}` (JVM metrics from Java apps via OTel agent)
-        *   Explore other metrics related to Kafka clients (e.g., `kafka_producer_`, `kafka_consumer_`) which might be available depending on the instrumentation level.
+        *   **Application Metrics**:
+            *   `rate(python_producer_messages_sent_total[1m])` (Custom metric from Python producer)
+            *   `rate(go_producer_messages_sent_total[1m])` (Custom metric from Go producer)
+            *   `jvm_memory_used_bytes{area="heap", service_name="java-kafka-producer"}` (JVM metrics from Java apps via OTel agent)
+        *   **Kafka Broker Health**:
+            *   `kafka_controller_active_count` (Active controllers - should be 1)
+            *   `kafka_controller_offline_partitions_count` (Offline partitions - should be 0)
+            *   `kafka_server_replica_manager_under_replicated_partitions` (Under-replicated partitions)
+        *   **Kafka Broker Performance**:
+            *   `rate(kafka_server_brokertopicmetrics_messages_in_total{topic="all"}[1m])` (Message throughput)
+            *   `kafka_network_request_total_time_ms_mean{request="Produce"}` (Produce request latency)
+            *   `kafka_server_kafka_request_handler_avg_idle_percent` (Request handler utilization)
+        *   **Kafka Storage & Topics**:
+            *   `kafka_log_log_size_bytes` (Topic partition sizes)
+            *   `increase(kafka_log_log_size_bytes[1h])` (Storage growth rate)
+        *   **Infrastructure Metrics**:
+            *   `rate(otelcol_process_uptime[5m])` (OTel Collector's own uptime)
+            *   `kafka_jvm_gc_collection_count_total` (Kafka broker GC metrics)
 
     **c. Logs (Loki Data Source)**:
     *   In Grafana, go to "Explore".
