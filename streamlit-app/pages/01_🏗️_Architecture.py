@@ -10,8 +10,12 @@ st.set_page_config(
 st.title("🏗️ System Architecture")
 st.markdown("### Detailed Architecture Overview")
 
-# Language selection
-language = st.selectbox("Language / 語言:", ["English", "繁體中文"])
+# Initialize session state for language if it doesn't exist (for direct page access)
+if 'language' not in st.session_state:
+    st.session_state['language'] = "English"
+
+# Get language from session state
+language = st.session_state.language
 
 if language == "繁體中文":
     st.markdown("### 🎯 架構層級")

@@ -14,8 +14,12 @@ st.set_page_config(
 st.title("🎮 Interactive Demo Scenarios")
 st.markdown("### Hands-on Learning Scenarios")
 
-# Language selection
-language = st.selectbox("Language / 語言:", ["English", "繁體中文"])
+# Initialize session state for language if it doesn't exist (for direct page access)
+if 'language' not in st.session_state:
+    st.session_state['language'] = "English"
+
+# Get language from session state
+language = st.session_state.language
 
 def run_command(command, timeout=30):
     """Execute shell command and return output"""

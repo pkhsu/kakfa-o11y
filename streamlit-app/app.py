@@ -21,6 +21,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize session state for language if it doesn't exist
+if 'language' not in st.session_state:
+    st.session_state['language'] = "English"
+
+def set_language():
+    """Callback function to update language in session state"""
+    st.session_state.language = st.session_state.lang_selector
+
 # Constants
 GRAFANA_URL = os.getenv("GRAFANA_URL", "http://localhost:3000")
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
@@ -68,7 +76,16 @@ def get_system_metrics():
     }
 
 # Sidebar navigation
-st.sidebar.title("🎯 Demo Navigation")
+st.sidebar.title("�� Demo Navigation")
+
+# Language selection in the sidebar
+st.sidebar.selectbox(
+    "Language / 語言:", 
+    ["English", "繁體中文"], 
+    key='lang_selector', 
+    on_change=set_language
+)
+
 st.sidebar.markdown("---")
 
 pages = {
@@ -85,8 +102,8 @@ pages = {
 selected_page = st.sidebar.radio("Select a page:", list(pages.keys()))
 page_key = pages[selected_page]
 
-# Language selection
-language = st.sidebar.selectbox("Language / 語言:", ["English", "繁體中文"])
+# Use language from session state
+language = st.session_state.language
 
 # Main content area
 if page_key == "overview":

@@ -17,6 +17,13 @@ st.set_page_config(
 st.title("📊 Live System Dashboard")
 st.markdown("### Real-time Monitoring & Metrics")
 
+# Initialize session state for language if it doesn't exist (for direct page access)
+if 'language' not in st.session_state:
+    st.session_state['language'] = "English"
+
+# Get language from session state
+language = st.session_state.language
+
 # Configuration
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
 GRAFANA_URL = os.getenv("GRAFANA_URL", "http://localhost:3000")
@@ -55,9 +62,6 @@ def query_prometheus_range(query, start_time, end_time, step='15s'):
     except Exception as e:
         st.error(f"Failed to query Prometheus range: {e}")
         return None
-
-# Language selection
-language = st.selectbox("Language / 語言:", ["English", "繁體中文"])
 
 # Auto-refresh option
 auto_refresh = st.checkbox("Auto-refresh (30s)" if language == "English" else "自動更新 (30秒)")
