@@ -39,7 +39,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(kafka_controller_kafkacontroller_activecontrollercount)",
+          "expr": "max(kafka_controller_kafkacontroller_activecontrollercount)",
           "legendFormat": "Active Controllers",
           "refId": "A"
         },
@@ -146,7 +146,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_server_brokertopicmetrics_messages_in{topic=\"all\"}[1m])",
+          "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_messages_in_total[1m]))",
           "legendFormat": "Messages In/sec",
           "refId": "A"
         },
@@ -155,7 +155,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_server_brokertopicmetrics_bytes_in{topic=\"all\"}[1m])",
+          "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_bytes_in_total[1m]))",
           "legendFormat": "Bytes In/sec",
           "refId": "B"
         },
@@ -164,7 +164,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_server_brokertopicmetrics_bytes_out{topic=\"all\"}[1m])",
+          "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_bytes_out_total[1m]))",
           "legendFormat": "Bytes Out/sec",
           "refId": "C"
         }
@@ -473,7 +473,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(kafka_server_brokertopicmetrics_totalproducerequestspersec)",
+          "expr": "sum by (instance) (rate(kafka_network_requestmetrics_requestspersec_total{request=\"Produce\"}[1m]))",
           "legendFormat": "Produce Requests/sec",
           "refId": "A"
         },
@@ -482,7 +482,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(kafka_server_brokertopicmetrics_totalfetchrequestspersec)",
+          "expr": "sum by (instance) (rate(kafka_network_requestmetrics_requestspersec_total{request=~\"Fetch.*\"}[1m]))",
           "legendFormat": "Fetch Requests/sec",
           "refId": "B"
         }
@@ -548,7 +548,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_server_brokertopicmetrics_failed_produce_requests{topic=\"all\"}[1m])",
+          "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_failed_produce_requests_total{topic=\"all\"}[1m]))",
           "legendFormat": "Failed Produce Requests/sec",
           "refId": "A"
         },
@@ -557,7 +557,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_server_brokertopicmetrics_failed_fetch_requests{topic=\"all\"}[1m])",
+          "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_failed_fetch_requests_total{topic=\"all\"}[1m]))",
           "legendFormat": "Failed Fetch Requests/sec",
           "refId": "B"
         },
@@ -566,7 +566,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_network_requestmetrics_errorspersec[1m])",
+          "expr": "sum by (instance) (rate(kafka_network_requestmetrics_errorspersec_total[1m]))",
           "legendFormat": "Network Request Errors/sec",
           "refId": "C"
         }
