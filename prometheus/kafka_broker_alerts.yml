@@ -110,7 +110,7 @@ groups:
           description: "Kafka fetch failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
 
       - alert: KafkaHighNetworkErrors
-        expr: rate(kafka_network_requestmetrics_errorspersec[5m]) > 0.1
+        expr: rate(kafka_network_requestmetrics_errors_total{error="all"}[5m]) > 0.1
         for: 2m
         labels:
           severity: warning
@@ -118,7 +118,29 @@ groups:
           type: errors
         annotations:
           summary: "High Kafka network error rate"
-          description: "Kafka network error rate is {{ $value }} errors/sec on {{ $labels.instance }}"
+          description: "Kafka network error rate is {{ $value }} errors/sec for {{ $labels.request }} requests on {{ $labels.instance }}"
+
+      - alert: KafkaHighProduceErrorRate
+        expr: (rate(kafka_server_brokertopicmetrics_failed_produce_requests_total{topic="all"}[5m]) / rate(kafka_network_requestmetrics_requests_total{request="Produce"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka
+          type: errors
+        annotations:
+          summary: "High Kafka produce error rate"
+          description: "Kafka produce error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: KafkaHighFetchErrorRate
+        expr: (rate(kafka_server_brokertopicmetrics_failed_fetch_requests_total{topic="all"}[5m]) / rate(kafka_network_requestmetrics_requests_total{request=~"Fetch.*"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka
+          type: errors
+        annotations:
+          summary: "High Kafka fetch error rate" 
+          description: "Kafka fetch error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
 
   - name: kafka_broker_storage
     rules:
@@ -209,4 +231,65 @@ groups:
           type: cluster_info
         annotations:
           summary: "High number of Kafka topics"
-          description: "Kafka cluster has {{ $value }} topics" 
+          description: "Kafka cluster has {{ $value }} topics"
+
+  - name: kafka_consumer_lag
+    rules:
+      # Consumer Lag Alerts
+      - alert: KafkaConsumerHighLag
+        expr: kafka_consumer_lag_sum > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: consumer_lag
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer {{ $labels.client_id }} has lag of {{ $value }} messages"
+
+      - alert: KafkaConsumerCriticalLag
+        expr: kafka_consumer_lag_sum > 50000
+        for: 2m
+        labels:
+          severity: critical
+          component: kafka
+          type: consumer_lag
+        annotations:
+          summary: "Critical Kafka consumer lag"
+          description: "Consumer {{ $labels.client_id }} has critical lag of {{ $value }} messages"
+
+      - alert: KafkaConsumerLagGrowth
+        expr: increase(kafka_consumer_lag_sum[10m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: consumer_lag
+        annotations:
+          summary: "Kafka consumer lag increasing"
+          description: "Consumer {{ $labels.client_id }} lag has increased by {{ $value }} messages in the last 10 minutes"
+
+  - name: kafka_jvm_health
+    rules:
+      # JVM Health Alerts
+      - alert: KafkaHighHeapUsage
+        expr: (kafka_jvm_memory_pool_usage_bytes{pool="heap"} / kafka_jvm_memory_pool_max_bytes{pool="heap"}) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: jvm
+        annotations:
+          summary: "High Kafka JVM heap usage"
+          description: "Kafka JVM heap usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: KafkaHighGCTime
+        expr: rate(kafka_jvm_gc_collection_time_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka
+          type: jvm
+        annotations:
+          summary: "High Kafka GC time"
+          description: "Kafka is spending {{ $value | humanizePercentage }} of time in GC on {{ $labels.instance }}" 

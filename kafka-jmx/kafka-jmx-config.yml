@@ -23,6 +23,49 @@ rules:
       instance: "kafka"
       component: "controller"
 
+  # Standard Controller metrics with specific naming
+  - pattern: "kafka.controller<type=KafkaController, name=ActiveControllerCount><>Value"
+    name: kafka_controller_kafkacontroller_activecontrollercount
+    labels:
+      cluster: "tutorial" 
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value"
+    name: kafka_controller_kafkacontroller_offlinepartitionscount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=PreferredReplicaImbalanceCount><>Value"
+    name: kafka_controller_kafkacontroller_preferredreplicaimbalancecount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=GlobalTopicCount><>Value"
+    name: kafka_controller_kafkacontroller_globaltopiccount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=GlobalPartitionCount><>Value"
+    name: kafka_controller_kafkacontroller_globalpartitioncount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
+  - pattern: "kafka.controller<type=KafkaController, name=ActiveBrokerCount><>Value"
+    name: kafka_controller_kafkacontroller_activebrokercount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "controller"
+
   # Network request metrics
   - pattern: "kafka.network<type=(.+), name=(.+), request=(.+)><>Count"
     name: kafka_network_$1_$2_total
@@ -40,6 +83,36 @@ rules:
       instance: "kafka"
       component: "network"
       request: $3
+
+  # Specific network request metrics to match dashboard queries
+  - pattern: "kafka.network<type=RequestMetrics, name=LocalTimeMs, request=(.+)><>Mean"
+    name: kafka_network_requestmetrics_localtimems_mean
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  - pattern: "kafka.server<type=ReplicaManager, name=LeaderCount><>Value"
+    name: kafka_server_replicamanager_leadercount
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "replica_manager"
+
+  - pattern: "kafka.server<type=ReplicaManager, name=UnderReplicatedPartitions><>Value"
+    name: kafka_server_replicamanager_underreplicatedpartitions
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "replica_manager"
+
+  - pattern: "kafka.log<type=LogFlushStats, name=LogFlushRateAndTimeMs><>Count"
+    name: kafka_log_log_flush_rate
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "log"
 
   # Network request time percentiles
   - pattern: "kafka.network<type=(.+), name=(.+), request=(.+)><>99thPercentile"
@@ -281,6 +354,42 @@ rules:
       instance: "kafka"
       component: "group_coordinator"
 
+  # Consumer Lag Metrics
+  - pattern: "kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+), topic=(.+), partition=(.+)><>lag"
+    name: kafka_consumer_lag
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "consumer"
+      client_id: $1
+      topic: $2
+      partition: $3
+
+  - pattern: "kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+)><>lag-sum"
+    name: kafka_consumer_lag_sum
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "consumer"
+      client_id: $1
+
+  - pattern: "kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+)><>lag-max"
+    name: kafka_consumer_lag_max
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "consumer"
+      client_id: $1
+
+  # Consumer Coordinator Metrics
+  - pattern: "kafka.consumer<type=consumer-coordinator-metrics, client-id=(.+)><>(.+)"
+    name: kafka_consumer_coordinator_$2
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "consumer_coordinator"
+      client_id: $1
+
   # Error & Exception Metrics
   - pattern: "kafka.server<type=BrokerTopicMetrics, name=FailedFetchRequestsPerSec, topic=(.+)><>Count"
     name: kafka_server_brokertopicmetrics_failed_fetch_requests_total
@@ -313,6 +422,44 @@ rules:
       instance: "kafka"
       component: "broker"
       topic: "all"
+
+  # Network Error Metrics - Fixed and More Precise
+  - pattern: "kafka.network<type=RequestMetrics, name=ErrorsPerSec, request=(.+), error=(.+)><>Count"
+    name: kafka_network_requestmetrics_errors_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+      error: $2
+
+  - pattern: "kafka.network<type=RequestMetrics, name=ErrorsPerSec, request=(.+)><>Count"
+    name: kafka_network_requestmetrics_errors_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+      error: "all"
+
+  # Request processing metrics
+  - pattern: "kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count"
+    name: kafka_network_requestmetrics_requests_total
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "network"
+      request: $1
+
+  # Request timeout and throttling metrics
+  - pattern: "kafka.server<type=ClientQuotaManager, user=(.+), client-id=(.+)><>throttle-time"
+    name: kafka_server_client_quota_manager_throttle_time_ms
+    labels:
+      cluster: "tutorial"
+      instance: "kafka"
+      component: "quota_manager"
+      user: $1
+      client_id: $2
 
   # Connection Metrics
   - pattern: "kafka.server<type=socket-server-metrics, listener=(.+), networkProcessor=(.+)><>connection-count"

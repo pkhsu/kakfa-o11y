@@ -566,9 +566,27 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (rate(kafka_network_requestmetrics_errorspersec_total[1m]))",
-          "legendFormat": "Network Request Errors/sec",
+          "expr": "sum by (request) (rate(kafka_network_requestmetrics_errors_total{error=\"all\"}[1m]))",
+          "legendFormat": "Network {{request}} Errors/sec",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (instance) (rate(kafka_server_brokertopicmetrics_failed_produce_requests_total{topic=\"all\"}[1m])) / sum by (instance) (rate(kafka_network_requestmetrics_requests_total{request=\"Produce\"}[1m]))) * 100",
+          "legendFormat": "Produce Error Rate %",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (instance) (rate(kafka_server_brokertopicmetrics_failed_fetch_requests_total{topic=\"all\"}[1m])) / sum by (instance) (rate(kafka_network_requestmetrics_requests_total{request=~\"Fetch.*\"}[1m]))) * 100",
+          "legendFormat": "Fetch Error Rate %",
+          "refId": "E"
         }
       ],
       "fieldConfig": {
@@ -787,6 +805,202 @@
     },
 
     {
+      "title": "Kafka Consumer Lag & Processing",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "id": 17,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "kafka_consumer_lag_sum{client_id=~\".*consumer.*\"}",
+          "legendFormat": "Consumer Lag - {{client_id}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(kafka_consumer_records_consumed_total[1m]) or rate(kafka_messages_received_total{language=\"java\"}[1m])",
+          "legendFormat": "Messages Consumed/sec - {{client_id}}{{service_name}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "kafka_coordinator_group_metadata_manager_num_groups",
+          "legendFormat": "Active Consumer Groups",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+
+    {
+      "title": "Kafka JVM & Resource Utilization", 
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "id": 18,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "kafka_jvm_memory_pool_usage_bytes{pool=\"heap\"} / 1024 / 1024",
+          "legendFormat": "JVM Heap Usage (MB)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(kafka_jvm_gc_collection_time_total[1m])",
+          "legendFormat": "GC Time/sec - {{gc_name}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "kafka_server_kafka_request_handler_avg_idle_percent",
+          "legendFormat": "Request Handler Idle %",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(kafka_server_socket_server_connection_count) by (listener)",
+          "legendFormat": "Active Connections - {{listener}}",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+
+    {
       "title": "OTel Collector: Telemetry Throughput",
       "type": "timeseries",
       "datasource": {
@@ -794,7 +1008,7 @@
         "uid": "prometheus"
       },
       "id": 6,
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
       "targets": [
         {
           "datasource": {
@@ -884,7 +1098,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Kafka O11y Tutorial Overview - Enhanced Broker Monitoring",
+  "title": "Kafka O11y Tutorial Overview - Enhanced Monitoring & Error Analysis",
   "uid": "kafka-o11y-tutorial-overview",
   "version": 3,
   "weekStart": ""
